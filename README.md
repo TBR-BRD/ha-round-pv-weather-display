@@ -8,9 +8,9 @@ Round PV and weather display for the Waveshare ESP32-S3-LCD-1.28 using ESPHome a
 </a>
 <br>
 
-![Round Display](docs/media/rpi-oberflaeche-qr.jpg)
+![Round Display](round-display.jpg)
 
-Foto der RPi Oberfläche
+Round Display GUI
 
 ## Features
 
