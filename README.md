@@ -2,6 +2,16 @@
 
 Round PV and weather display for the Waveshare ESP32-S3-LCD-1.28 using ESPHome and Home Assistant.
 
+<br>
+<a href="https://www.buymeacoffee.com/thoralf.brandt" target="_blank">
+  <img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174">
+</a>
+<br>
+
+![Round Display](docs/media/rpi-oberflaeche-qr.jpg)
+
+Foto der RPi Oberfläche
+
 ## Features
 
 - outer ring: current PV power
