@@ -1,0 +1,253 @@
+substitutions:
+  device_name: pv-round-display
+  friendly_name: PV Round Display
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  on_boot:
+    priority: -100
+    then:
+      - light.turn_on:
+          id: backlight
+          brightness: 100%
+
+esp32:
+  board: esp32-s3-devkitc-1
+  framework:
+    type: esp-idf
+
+psram:
+  mode: octal
+
+logger:
+
+api:
+
+ota:
+  - platform: esphome
+
+web_server:
+
+captive_portal:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "${friendly_name} Fallback"
+    password: !secret fallback_password
+
+time:
+  - platform: homeassistant
+    id: ha_time
+
+spi:
+  clk_pin: GPIO10
+  mosi_pin: GPIO11
+
+output:
+  - platform: ledc
+    pin: GPIO40
+    id: backlight_pwm
+    frequency: 1000Hz
+
+light:
+  - platform: monochromatic
+    output: backlight_pwm
+    id: backlight
+    name: "PV Round Display Backlight"
+    restore_mode: ALWAYS_ON
+    default_transition_length: 0s
+
+font:
+  - file: "gfonts://Roboto"
+    id: font_text
+    size: 15
+    bpp: 4
+    glyphs: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyzÄÖÜäöüß °?'
+
+  - file: "gfonts://Roboto"
+    id: font_num
+    size: 32
+    bpp: 4
+    glyphs: '0123456789:+-.'
+
+image:
+  - file: "/config/esphome/weather_sun.png"
+    id: icon_weather_sun
+    type: RGB
+    transparency: alpha_channel
+
+  - file: "/config/esphome/weather_cloudy.png"
+    id: icon_weather_cloudy
+    type: RGB
+    transparency: alpha_channel
+
+  - file: "/config/esphome/weather_overcast.png"
+    id: icon_weather_overcast
+    type: RGB
+    transparency: alpha_channel
+
+  - file: "/config/esphome/weather_rain.png"
+    id: icon_weather_rain
+    type: RGB
+    transparency: alpha_channel
+
+  - file: "/config/esphome/weather_snow.png"
+    id: icon_weather_snow
+    type: RGB
+    transparency: alpha_channel
+
+sensor:
+  - platform: homeassistant
+    id: pv_power
+    entity_id: sensor.pv_display_pv_power_w
+    internal: true
+
+  - platform: homeassistant
+    id: battery_soc
+    entity_id: sensor.pv_display_battery_soc
+    internal: true
+
+  - platform: homeassistant
+    id: generation_today
+    entity_id: sensor.pv_display_generation_today_kwh
+    internal: true
+
+  - platform: homeassistant
+    id: consumption_today
+    entity_id: sensor.pv_display_consumption_today_kwh
+    internal: true
+
+  - platform: homeassistant
+    id: grid_power
+    entity_id: sensor.pv_display_grid_power_w
+    internal: true
+
+  - platform: homeassistant
+    id: weather_temp
+    entity_id: sensor.open_meteo_falkensee_wetter
+    internal: true
+
+  - platform: homeassistant
+    id: weather_code
+    entity_id: sensor.open_meteo_falkensee_weathercode
+    internal: true
+
+display:
+  - platform: mipi_spi
+    id: round_display
+    model: GC9A01A
+    invert_colors: true
+    cs_pin: GPIO9
+    dc_pin: GPIO8
+    reset_pin: GPIO12
+    dimensions:
+      width: 240
+      height: 240
+    color_order: bgr
+    data_rate: 40MHz
+    update_interval: 1s
+    lambda: |-
+      using namespace esphome;
+      using namespace display;
+
+      const Color BLACK(0, 0, 0);
+      const Color WHITE(255, 255, 255);
+      const Color RING_BG(55, 55, 55);
+
+      it.fill(BLACK);
+
+      auto clampf = [](float v, float lo, float hi) -> float {
+        if (isnan(v)) return lo;
+        if (v < lo) return lo;
+        if (v > hi) return hi;
+        return v;
+      };
+
+      auto draw_arc = [&](int cx, int cy, int radius, int thickness,
+                          float start_deg, float end_deg, Color color) {
+        const float pi = 3.14159265f;
+        const int steps = 240;
+        for (int t = 0; t < thickness; t++) {
+          float r = radius - t;
+          for (int i = 0; i < steps; i++) {
+            float a1 = start_deg + (end_deg - start_deg) * i / steps;
+            float a2 = start_deg + (end_deg - start_deg) * (i + 1) / steps;
+            float rad1 = a1 * pi / 180.0f;
+            float rad2 = a2 * pi / 180.0f;
+            int x1 = cx + int(cosf(rad1) * r);
+            int y1 = cy + int(sinf(rad1) * r);
+            int x2 = cx + int(cosf(rad2) * r);
+            int y2 = cy + int(sinf(rad2) * r);
+            it.line(x1, y1, x2, y2, color);
+          }
+        }
+      };
+
+      float pv = clampf(id(pv_power).state, 0.0f, 6000.0f);
+      float soc = clampf(id(battery_soc).state, 0.0f, 100.0f);
+      float gen = isnan(id(generation_today).state) ? 0.0f : id(generation_today).state;
+      float cons = isnan(id(consumption_today).state) ? 0.0f : id(consumption_today).state;
+      float grid = isnan(id(grid_power).state) ? 0.0f : id(grid_power).state;
+      float wt = isnan(id(weather_temp).state) ? 0.0f : id(weather_temp).state;
+      int wc = isnan(id(weather_code).state) ? 0 : int(id(weather_code).state);
+
+      const int cx = 120;
+      const int cy = 120;
+      const float arc_start = 140.0f;
+      const float arc_end = 400.0f;
+      const float arc_span = arc_end - arc_start;
+      float pv_end = arc_start + (pv / 6000.0f) * arc_span;
+      float soc_end = arc_start + (soc / 100.0f) * arc_span;
+
+      draw_arc(cx, cy, 112, 9, arc_start, arc_end, RING_BG);
+      draw_arc(cx, cy, 112, 9, arc_start, pv_end, WHITE);
+      draw_arc(cx, cy, 96, 12, arc_start, arc_end, RING_BG);
+      draw_arc(cx, cy, 96, 12, arc_start, soc_end, WHITE);
+
+      char grid_buf[16];
+      if (grid > 10.0f) snprintf(grid_buf, sizeof(grid_buf), "+%.0f", grid);
+      else if (grid < -10.0f) snprintf(grid_buf, sizeof(grid_buf), "%.0f", grid);
+      else snprintf(grid_buf, sizeof(grid_buf), "0");
+
+      it.printf(118, 82, id(font_num), WHITE, TextAlign::CENTER, "%s", grid_buf);
+      it.print(154, 82, id(font_text), WHITE, TextAlign::CENTER, "W");
+
+      it.line(26, 112, 214, 112, WHITE);
+      it.line(120, 118, 120, 158, WHITE);
+      it.line(30, 164, 210, 164, WHITE);
+
+      it.print(86, 126, id(font_text), WHITE, TextAlign::CENTER, "Erzeugung");
+      char gen_buf[10];
+      snprintf(gen_buf, sizeof(gen_buf), "%.1f", gen);
+      it.printf(70, 148, id(font_num), WHITE, TextAlign::CENTER, "%s", gen_buf);
+      it.print(106, 148, id(font_text), WHITE, TextAlign::CENTER, "kWh");
+
+      it.print(170, 126, id(font_text), WHITE, TextAlign::CENTER, "Bezug");
+      char cons_buf[10];
+      snprintf(cons_buf, sizeof(cons_buf), "%.1f", cons);
+      it.printf(156, 148, id(font_num), WHITE, TextAlign::CENTER, "%s", cons_buf);
+      it.print(194, 148, id(font_text), WHITE, TextAlign::CENTER, "kWh");
+
+      auto now = id(ha_time).now();
+      if (now.is_valid()) {
+        char time_buf[6];
+        snprintf(time_buf, sizeof(time_buf), "%02d:%02d", now.hour, now.minute);
+        it.printf(120, 184, id(font_num), WHITE, TextAlign::CENTER, "%s", time_buf);
+      } else {
+        it.printf(120, 184, id(font_num), WHITE, TextAlign::CENTER, "--:--");
+      }
+
+      if (wc == 0) it.image(82, 198, id(icon_weather_sun));
+      else if (wc == 1 || wc == 2) it.image(82, 198, id(icon_weather_cloudy));
+      else if (wc == 3 || wc == 45 || wc == 48) it.image(82, 198, id(icon_weather_overcast));
+      else if ((wc >= 51 && wc <= 67) || (wc >= 80 && wc <= 82) || wc == 95 || wc == 96 || wc == 99) it.image(82, 198, id(icon_weather_rain));
+      else if ((wc >= 71 && wc <= 77) || wc == 85 || wc == 86) it.image(82, 198, id(icon_weather_snow));
+      else it.print(92, 208, id(font_text), WHITE, TextAlign::CENTER, "?");
+
+      char temp_buf[8];
+      snprintf(temp_buf, sizeof(temp_buf), "%.0f", wt);
+      it.printf(144, 208, id(font_num), WHITE, TextAlign::CENTER, "%s", temp_buf);
+      it.print(176, 208, id(font_text), WHITE, TextAlign::CENTER, "C");

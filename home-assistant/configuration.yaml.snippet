@@ -1,0 +1,40 @@
+rest:
+  - resource: "https://geocoding-api.open-meteo.com/v1/search?name=Falkensee&count=1&language=de&format=json"
+    scan_interval: 86400
+    sensor:
+      - name: "Open Meteo Falkensee Geocoding"
+        unique_id: open_meteo_falkensee_geocoding
+        value_template: "{{ value_json.results[0].name }}"
+        json_attributes_path: "$.results[0]"
+        json_attributes:
+          - latitude
+          - longitude
+          - timezone
+
+  - resource: "https://api.open-meteo.com/v1/forecast?latitude=52.56014&longitude=13.0927&current=temperature_2m,weather_code&timezone=auto"
+    scan_interval: 900
+    sensor:
+      - name: "Open Meteo Falkensee Wetter"
+        unique_id: open_meteo_falkensee_wetter
+        value_template: "{{ value_json.current.temperature_2m }}"
+        unit_of_measurement: "°C"
+        device_class: temperature
+        state_class: measurement
+        json_attributes_path: "$.current"
+        json_attributes:
+          - temperature_2m
+          - weather_code
+
+template:
+  - sensor:
+      - name: "Open Meteo Falkensee Latitude"
+        unique_id: open_meteo_falkensee_latitude
+        state: "{{ state_attr('sensor.open_meteo_falkensee_geocoding', 'latitude') | float(52.56014) }}"
+
+      - name: "Open Meteo Falkensee Longitude"
+        unique_id: open_meteo_falkensee_longitude
+        state: "{{ state_attr('sensor.open_meteo_falkensee_geocoding', 'longitude') | float(13.0927) }}"
+
+      - name: "Open Meteo Falkensee Wettercode"
+        unique_id: open_meteo_falkensee_weathercode
+        state: "{{ state_attr('sensor.open_meteo_falkensee_wetter', 'weather_code') | int(0) }}"

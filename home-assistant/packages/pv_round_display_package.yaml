@@ -1,0 +1,33 @@
+template:
+  - sensor:
+      - name: "PV Display PV Power W"
+        unique_id: pv_display_pv_power_w
+        unit_of_measurement: "W"
+        state_class: measurement
+        state: "{{ states('sensor.REPLACE_WITH_PV_POWER_SENSOR') | float(0) | round(0) }}"
+
+      - name: "PV Display Battery SoC"
+        unique_id: pv_display_battery_soc
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ states('sensor.REPLACE_WITH_BATTERY_SOC_SENSOR') | float(0) | round(0) }}"
+
+      - name: "PV Display Generation Today kWh"
+        unique_id: pv_display_generation_today_kwh
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: measurement
+        state: "{{ states('sensor.REPLACE_WITH_DAILY_GENERATION_SENSOR') | float(0) | round(1) }}"
+
+      - name: "PV Display Consumption Today kWh"
+        unique_id: pv_display_consumption_today_kwh
+        unit_of_measurement: "kWh"
+        device_class: energy
+        state_class: measurement
+        state: "{{ states('sensor.REPLACE_WITH_DAILY_IMPORT_SENSOR') | float(0) | round(1) }}"
+
+      - name: "PV Display Grid Power W"
+        unique_id: pv_display_grid_power_w
+        unit_of_measurement: "W"
+        state_class: measurement
+        state: "{{ states('sensor.REPLACE_WITH_GRID_POWER_SENSOR') | float(0) | round(0) }}"
